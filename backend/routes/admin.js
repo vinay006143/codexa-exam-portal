@@ -461,6 +461,8 @@ router.get('/results', authenticateAdmin, async (req, res) => {
 
     const formatted = results.map((r, idx) => ({
       id: r._id,
+      studentId: r.studentId?._id || 'N/A',
+      examId: r.examId?._id || 'N/A',
       studentName: r.studentId?.fullName || 'N/A',
       rollNumber: r.studentId?.rollNumber || 'N/A',
       email: r.studentId?.email || 'N/A',
@@ -480,6 +482,102 @@ router.get('/results', authenticateAdmin, async (req, res) => {
     return res.json(formatted);
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch examination results.' });
+  }
+});
+
+router.post('/results', authenticateAdmin, async (req, res) => {
+  try {
+    const { studentId, examId, score, accuracy, totalCorrect, totalWrong, totalUnanswered, status, submissionTimeSeconds, submittedAt } = req.body;
+    if (!studentId || !examId || score === undefined || accuracy === undefined || status === undefined || submissionTimeSeconds === undefined) {
+      return res.status(400).json({ error: 'Missing required result fields.' });
+    }
+
+    // Check duplicate
+    const duplicate = await Submission.findOne({ studentId, examId });
+    if (duplicate) {
+      return res.status(400).json({ error: 'A submission result already exists for this student and exam.' });
+    }
+
+    const submission = new Submission({
+      studentId,
+      examId,
+      score,
+      accuracy,
+      totalCorrect: totalCorrect || 0,
+      totalWrong: totalWrong || 0,
+      totalUnanswered: totalUnanswered || 0,
+      submittedAt: submittedAt || new Date(),
+      status,
+      submissionTimeSeconds
+    });
+    await submission.save();
+
+    // Log action
+    await AuditLog.create({
+      userId: req.user.userId,
+      action: 'create_result',
+      details: `Manually created result for Student ID: ${studentId}, Exam ID: ${examId}, Score: ${score}`,
+      ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+    });
+
+    return res.status(201).json({ message: 'Exam result created successfully.', submission });
+  } catch (err) {
+    console.error('Error creating exam result:', err);
+    return res.status(500).json({ error: 'Failed to create exam result.' });
+  }
+});
+
+router.put('/results/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { score, accuracy, totalCorrect, totalWrong, totalUnanswered, status, submissionTimeSeconds, submittedAt } = req.body;
+    const submission = await Submission.findById(req.params.id);
+    if (!submission) return res.status(404).json({ error: 'Exam result not found.' });
+
+    if (score !== undefined) submission.score = score;
+    if (accuracy !== undefined) submission.accuracy = accuracy;
+    if (totalCorrect !== undefined) submission.totalCorrect = totalCorrect;
+    if (totalWrong !== undefined) submission.totalWrong = totalWrong;
+    if (totalUnanswered !== undefined) submission.totalUnanswered = totalUnanswered;
+    if (status !== undefined) submission.status = status;
+    if (submissionTimeSeconds !== undefined) submission.submissionTimeSeconds = submissionTimeSeconds;
+    if (submittedAt !== undefined) submission.submittedAt = submittedAt;
+
+    await submission.save();
+
+    // Log action
+    await AuditLog.create({
+      userId: req.user.userId,
+      action: 'update_result',
+      details: `Updated result ID: ${submission._id}. Score: ${submission.score}, Status: ${submission.status}`,
+      ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+    });
+
+    return res.json({ message: 'Exam result updated successfully.', submission });
+  } catch (err) {
+    console.error('Error updating exam result:', err);
+    return res.status(500).json({ error: 'Failed to update exam result.' });
+  }
+});
+
+router.delete('/results/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.id);
+    if (!submission) return res.status(404).json({ error: 'Exam result not found.' });
+
+    await Submission.findByIdAndDelete(submission._id);
+
+    // Log action
+    await AuditLog.create({
+      userId: req.user.userId,
+      action: 'delete_result',
+      details: `Deleted exam result ID: ${submission._id} for student ID: ${submission.studentId}, exam ID: ${submission.examId}`,
+      ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+    });
+
+    return res.json({ message: 'Exam result deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting exam result:', err);
+    return res.status(500).json({ error: 'Failed to delete exam result.' });
   }
 });
 

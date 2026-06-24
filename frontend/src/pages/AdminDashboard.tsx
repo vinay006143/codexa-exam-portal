@@ -54,6 +54,21 @@ export const AdminDashboard: React.FC = () => {
   const [showExamModal, setShowExamModal] = useState(false);
   const [examForm, setExamForm] = useState({ id: '', title: '', description: '', totalQuestions: 30, duration: 60, passingPercentage: 50, startDate: '', endDate: '', status: 'draft' });
 
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultForm, setResultForm] = useState({
+    id: '',
+    studentId: '',
+    examId: '',
+    score: 0,
+    accuracy: 0,
+    totalCorrect: 0,
+    totalWrong: 0,
+    totalUnanswered: 0,
+    submissionTimeSeconds: 0,
+    status: 'pass',
+    submittedAt: ''
+  });
+
   // Load backend statistics and lists
   const fetchAllData = async () => {
     setLoading(true);
@@ -272,6 +287,56 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Delete this exam? All student assignments and scores for this exam will be wiped.')) return;
     try {
       const res = await fetch(`http://localhost:5000/api/admin/exams/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      fetchAllData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // CRUD Ops: RESULTS
+  const saveResult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!resultForm.id;
+      const url = isEdit ? `http://localhost:5000/api/admin/results/${resultForm.id}` : 'http://localhost:5000/api/admin/results';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(resultForm)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Result save failed');
+
+      setShowResultModal(false);
+      setResultForm({
+        id: '',
+        studentId: '',
+        examId: '',
+        score: 0,
+        accuracy: 0,
+        totalCorrect: 0,
+        totalWrong: 0,
+        totalUnanswered: 0,
+        submissionTimeSeconds: 0,
+        status: 'pass',
+        submittedAt: ''
+      });
+      fetchAllData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const deleteResult = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this exam result record?')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/results/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1081,6 +1146,28 @@ export const AdminDashboard: React.FC = () => {
 
                     <div className="flex gap-2">
                       <button
+                        onClick={() => {
+                          setResultForm({
+                            id: '',
+                            studentId: students[0]?._id || '',
+                            examId: exams[0]?._id || '',
+                            score: 0,
+                            accuracy: 0,
+                            totalCorrect: 0,
+                            totalWrong: 0,
+                            totalUnanswered: 0,
+                            submissionTimeSeconds: 0,
+                            status: 'pass',
+                            submittedAt: new Date().toISOString().slice(0, 16)
+                          });
+                          setShowResultModal(true);
+                        }}
+                        className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 transition-all cursor-pointer mr-1"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Result</span>
+                      </button>
+                      <button
                         onClick={exportToExcel}
                         className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
                       >
@@ -1135,6 +1222,7 @@ export const AdminDashboard: React.FC = () => {
                             <th className="px-6 py-3.5 text-left font-bold text-slate-500 uppercase tracking-wider text-[10px]">Accuracy</th>
                             <th className="px-6 py-3.5 text-left font-bold text-slate-500 uppercase tracking-wider text-[10px]">Time Taken</th>
                             <th className="px-6 py-3.5 text-left font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
+                            <th className="px-6 py-3.5 text-right font-bold text-slate-500 uppercase tracking-wider text-[10px]">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-100">
@@ -1156,11 +1244,40 @@ export const AdminDashboard: React.FC = () => {
                                   {r.status.toUpperCase()}
                                 </span>
                               </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right space-x-3">
+                                <button
+                                  onClick={() => {
+                                    setResultForm({
+                                      id: r.id,
+                                      studentId: r.studentId || '',
+                                      examId: r.examId || '',
+                                      score: r.score,
+                                      accuracy: r.accuracy,
+                                      totalCorrect: r.totalCorrect,
+                                      totalWrong: r.totalWrong,
+                                      totalUnanswered: r.totalUnanswered,
+                                      submissionTimeSeconds: r.submissionTimeSeconds,
+                                      status: r.status,
+                                      submittedAt: new Date(r.submittedAt).toISOString().slice(0, 16)
+                                    });
+                                    setShowResultModal(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 font-bold inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Edit2 className="h-3 w-3" /> Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteResult(r.id)}
+                                  className="text-red-650 hover:text-red-800 font-bold inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Trash2 className="h-3 w-3" /> Delete
+                                </button>
+                              </td>
                             </tr>
                           ))}
                           {sortedResults.length === 0 && (
                             <tr>
-                              <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-semibold">
+                              <td colSpan={9} className="px-6 py-12 text-center text-slate-400 font-semibold">
                                 No submissions found.
                               </td>
                             </tr>
@@ -1604,6 +1721,177 @@ export const AdminDashboard: React.FC = () => {
                   className="py-2 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/10 transition cursor-pointer"
                 >
                   Save Exam
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EXAM RESULT MODAL */}
+      {showResultModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-slate-100 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in-up">
+            <h3 className="text-base font-black text-slate-900">{resultForm.id ? 'Edit Scorecard Details' : 'Add New Exam Result'}</h3>
+            <form onSubmit={saveResult} className="space-y-4 text-xs text-slate-700">
+              <div>
+                <label className="block font-bold text-slate-600">Select Student</label>
+                <select
+                  disabled={!!resultForm.id}
+                  required
+                  value={resultForm.studentId}
+                  onChange={(e) => setResultForm({ ...resultForm, studentId: e.target.value })}
+                  className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="" disabled>-- Choose Student --</option>
+                  {students.map(s => (
+                    <option key={s._id} value={s._id}>{s.fullName} ({s.rollNumber})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-600">Select Exam</label>
+                <select
+                  disabled={!!resultForm.id}
+                  required
+                  value={resultForm.examId}
+                  onChange={(e) => {
+                    setResultForm({
+                      ...resultForm,
+                      examId: e.target.value
+                    });
+                  }}
+                  className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="" disabled>-- Choose Exam --</option>
+                  {exams.map(ex => (
+                    <option key={ex._id} value={ex._id}>{ex.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-600">Score</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    value={resultForm.score}
+                    onChange={(e) => {
+                      const newScore = parseInt(e.target.value) || 0;
+                      const selectedExam = exams.find(ex => ex._id === resultForm.examId);
+                      const totalQ = selectedExam?.totalQuestions || 30;
+                      const autoAcc = Math.min(100, Math.round((newScore / totalQ) * 100));
+                      const autoStatus = selectedExam ? (newScore >= Math.round((selectedExam.passingPercentage / 100) * totalQ) ? 'pass' : 'fail') : 'pass';
+                      setResultForm({
+                        ...resultForm,
+                        score: newScore,
+                        accuracy: autoAcc,
+                        totalCorrect: newScore,
+                        status: autoStatus
+                      });
+                    }}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600">Accuracy (%)</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    max={100}
+                    value={resultForm.accuracy}
+                    onChange={(e) => setResultForm({ ...resultForm, accuracy: parseInt(e.target.value) || 0 })}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-600">Correct Answers</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resultForm.totalCorrect}
+                    onChange={(e) => setResultForm({ ...resultForm, totalCorrect: parseInt(e.target.value) || 0 })}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600">Wrong Answers</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resultForm.totalWrong}
+                    onChange={(e) => setResultForm({ ...resultForm, totalWrong: parseInt(e.target.value) || 0 })}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600">Unanswered</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resultForm.totalUnanswered}
+                    onChange={(e) => setResultForm({ ...resultForm, totalUnanswered: parseInt(e.target.value) || 0 })}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-600">Time Taken (Sec)</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    value={resultForm.submissionTimeSeconds}
+                    onChange={(e) => setResultForm({ ...resultForm, submissionTimeSeconds: parseInt(e.target.value) || 0 })}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600">Pass Status</label>
+                  <select
+                    value={resultForm.status}
+                    onChange={(e) => setResultForm({ ...resultForm, status: e.target.value })}
+                    className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-bold text-slate-600"
+                  >
+                    <option value="pass">Pass</option>
+                    <option value="fail">Fail</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-600">Submitted At</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={resultForm.submittedAt}
+                  onChange={(e) => setResultForm({ ...resultForm, submittedAt: e.target.value })}
+                  className="mt-1.5 block w-full border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-xs font-semibold text-slate-700"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResultModal(false)}
+                  className="py-2 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="py-2 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/10 transition cursor-pointer"
+                >
+                  Save Result
                 </button>
               </div>
             </form>

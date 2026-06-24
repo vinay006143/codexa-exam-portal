@@ -1,16 +1,42 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/coderank';
 
 mongoose.connect(mongoUri)
-  .then(() => console.log('Successfully connected to MongoDB.'))
+  .then(async () => {
+    console.log('Successfully connected to MongoDB.');
+    await seedDefaultAdmin();
+  })
   .catch(err => {
     console.error('Error connecting to MongoDB:', err.message);
     console.log('Ensure your MongoDB instance is running locally or check MONGODB_URI in backend/.env.');
   });
+
+async function seedDefaultAdmin() {
+  try {
+    const adminEmail = 'admin@coderank.com';
+    const User = mongoose.model('User');
+    const adminExists = await User.findOne({ email: adminEmail });
+    if (!adminExists) {
+      const hashedPassword = await bcrypt.hash('adminPassword123', 10);
+      const defaultAdmin = new User({
+        fullName: 'System Administrator',
+        email: adminEmail,
+        phone: '9999999999',
+        role: 'admin',
+        password: hashedPassword
+      });
+      await defaultAdmin.save();
+      console.log('Default admin user ("admin@coderank.com") seeded successfully in MongoDB.');
+    }
+  } catch (err) {
+    console.error('Error seeding default admin user:', err);
+  }
+}
 
 // User Schema
 const userSchema = new mongoose.Schema({

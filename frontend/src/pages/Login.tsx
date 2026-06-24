@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { KeyRound, Mail, ShieldAlert, Award, Lock, BookOpen, ShieldCheck, Activity, Terminal, Sparkles } from 'lucide-react';
+import { KeyRound, Mail, ShieldAlert, Award, Lock, BookOpen, ShieldCheck, Activity, Terminal, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   
+  const [loginRole, setLoginRole] = useState<'student' | 'admin'>('student');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -37,6 +41,10 @@ export const Login: React.FC = () => {
 
       if (!res.ok) {
         throw new Error(data.error || 'Login failed.');
+      }
+
+      if (data.user.role !== loginRole) {
+        throw new Error(`Access denied. Registered as a ${data.user.role.toUpperCase()}. Please use the correct tab.`);
       }
 
       login(data);
@@ -216,13 +224,44 @@ export const Login: React.FC = () => {
             {/* Header divider subtle glow */}
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-60"></div>
             
-            {!showForgot ? (
-              <form className="space-y-5" onSubmit={handleLogin}>
+            {!showForgot ? (              <form className="space-y-5" onSubmit={handleLogin}>
                 <div className="text-center space-y-1">
                   <h2 className="text-2xl font-bold text-slate-950 tracking-tight flex items-center justify-center gap-2">
                     <Lock className="h-5 w-5 text-blue-600 shrink-0" /> Portal Sign In
                   </h2>
                   <p className="text-xs text-slate-500">Provide your authorization credentials</p>
+                </div>
+
+                {/* Role Switch Tabs */}
+                <div className="flex bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginRole('student');
+                      setError('');
+                    }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                      loginRole === 'student'
+                        ? 'bg-white text-blue-650 shadow-sm border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Student Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginRole('admin');
+                      setError('');
+                    }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                      loginRole === 'admin'
+                        ? 'bg-white text-blue-650 shadow-sm border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Admin Login
+                  </button>
                 </div>
 
                 {error && (
@@ -244,7 +283,7 @@ export const Login: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition duration-200 text-sm"
-                      placeholder="e.g. student@coderank.com"
+                      placeholder={loginRole === 'admin' ? 'e.g. admin@coderank.com' : 'e.g. student@coderank.com'}
                     />
                   </div>
                 </div>
@@ -265,13 +304,20 @@ export const Login: React.FC = () => {
                       <KeyRound className="h-4 w-4 text-slate-400" />
                     </div>
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition duration-200 text-sm"
+                      className="block w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition duration-200 text-sm"
                       placeholder="••••••••"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition cursor-pointer font-bold text-xs"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -383,16 +429,25 @@ export const Login: React.FC = () => {
                         placeholder="Enter 6-digit code"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-755 uppercase tracking-wider">New Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="block w-full px-3.5 py-2.5 bg-slate-55 border border-slate-205 rounded-xl text-slate-850 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
-                        placeholder="Min 6 characters"
-                      />
+                      <div className="relative rounded-lg shadow-sm">
+                        <input
+                          type={showResetPassword ? 'text' : 'password'}
+                          required
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="block w-full px-3.5 pr-10 py-2.5 bg-slate-55 border border-slate-205 rounded-xl text-slate-850 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                          placeholder="Min 6 characters"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowResetPassword(!showResetPassword)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition cursor-pointer font-bold text-xs"
+                        >
+                          {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between gap-4 pt-2">
                       <button
