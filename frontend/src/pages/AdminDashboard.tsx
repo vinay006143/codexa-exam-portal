@@ -15,6 +15,7 @@ import {
   ShieldAlert, ListFilter, RefreshCw, Plus, Edit2, Trash2, 
   Download, Search, ShieldCheck, Database, Calendar, CheckSquare, Clock 
 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export const AdminDashboard: React.FC = () => {
   const { token, logout } = useAuth();
@@ -77,38 +78,38 @@ export const AdminDashboard: React.FC = () => {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       // Stats
-      const statsRes = await fetch('http://localhost:5000/api/admin/stats', { headers });
+      const statsRes = await fetch(`${API_BASE_URL}/api/admin/stats`, { headers });
       if (!statsRes.ok) throw new Error('Stats fetch error');
       const statsData = await statsRes.json();
       setStats(statsData);
 
       // Students
-      const stuRes = await fetch('http://localhost:5000/api/admin/students', { headers });
+      const stuRes = await fetch(`${API_BASE_URL}/api/admin/students`, { headers });
       const stuData = await stuRes.json();
       setStudents(stuData);
 
       // Questions
-      const qRes = await fetch('http://localhost:5000/api/admin/questions', { headers });
+      const qRes = await fetch(`${API_BASE_URL}/api/admin/questions`, { headers });
       const qData = await qRes.json();
       setQuestions(qData);
 
       // Exams
-      const examRes = await fetch('http://localhost:5000/api/admin/exams', { headers });
+      const examRes = await fetch(`${API_BASE_URL}/api/admin/exams`, { headers });
       const examData = await examRes.json();
       setExams(examData);
 
       // Submissions (Results)
-      const resRes = await fetch('http://localhost:5000/api/admin/results', { headers });
+      const resRes = await fetch(`${API_BASE_URL}/api/admin/results`, { headers });
       const resData = await resRes.json();
       setResults(resData);
 
       // Audit Logs
-      const logRes = await fetch('http://localhost:5000/api/admin/audit-logs', { headers });
+      const logRes = await fetch(`${API_BASE_URL}/api/admin/audit-logs`, { headers });
       const logData = await logRes.json();
       setAuditLogs(logData);
 
       // Live monitoring (initial fetch)
-      const liveRes = await fetch('http://localhost:5000/api/admin/live-monitoring', { headers });
+      const liveRes = await fetch(`${API_BASE_URL}/api/admin/live-monitoring`, { headers });
       const liveData = await liveRes.json();
       setLiveStudents(liveData);
 
@@ -125,7 +126,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Setup WebSocket live listening
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000');
+    socketRef.current = io(API_BASE_URL);
     socketRef.current.emit('admin_join');
 
     // Handle real-time updates of student status changes
@@ -163,7 +164,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       const isEdit = !!studentForm.id;
-      const url = isEdit ? `http://localhost:5000/api/admin/students/${studentForm.id}` : 'http://localhost:5000/api/admin/students';
+      const url = isEdit ? `${API_BASE_URL}/api/admin/students/${studentForm.id}` : `${API_BASE_URL}/api/admin/students`;
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -185,7 +186,7 @@ export const AdminDashboard: React.FC = () => {
   const deleteStudent = async (id: string) => {
     if (!confirm('Are you sure you want to delete this student and all their exam logs?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/students/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -201,7 +202,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       const isEdit = !!questionForm.id;
-      const url = isEdit ? `http://localhost:5000/api/admin/questions/${questionForm.id}` : 'http://localhost:5000/api/admin/questions';
+      const url = isEdit ? `${API_BASE_URL}/api/admin/questions/${questionForm.id}` : `${API_BASE_URL}/api/admin/questions`;
       const method = isEdit ? 'PUT' : 'POST';
 
       const bodyData = {
@@ -232,7 +233,7 @@ export const AdminDashboard: React.FC = () => {
   const deleteQuestion = async (id: string) => {
     if (!confirm('Are you sure you want to delete this question?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/questions/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/questions/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -246,7 +247,7 @@ export const AdminDashboard: React.FC = () => {
   const wipeQuestionBank = async () => {
     if (!confirm('WARNING: Are you sure you want to permanently delete ALL questions in the question bank? This cannot be undone.')) return;
     try {
-      const res = await fetch('http://localhost:5000/api/admin/questions', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/questions`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -264,7 +265,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       const isEdit = !!examForm.id;
-      const url = isEdit ? `http://localhost:5000/api/admin/exams/${examForm.id}` : 'http://localhost:5000/api/admin/exams';
+      const url = isEdit ? `${API_BASE_URL}/api/admin/exams/${examForm.id}` : `${API_BASE_URL}/api/admin/exams`;
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -286,7 +287,7 @@ export const AdminDashboard: React.FC = () => {
   const deleteExam = async (id: string) => {
     if (!confirm('Delete this exam? All student assignments and scores for this exam will be wiped.')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/exams/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/exams/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -302,7 +303,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       const isEdit = !!resultForm.id;
-      const url = isEdit ? `http://localhost:5000/api/admin/results/${resultForm.id}` : 'http://localhost:5000/api/admin/results';
+      const url = isEdit ? `${API_BASE_URL}/api/admin/results/${resultForm.id}` : `${API_BASE_URL}/api/admin/results`;
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -336,7 +337,7 @@ export const AdminDashboard: React.FC = () => {
   const deleteResult = async (id: string) => {
     if (!confirm('Are you sure you want to permanently delete this exam result record?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/results/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/results/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -355,7 +356,7 @@ export const AdminDashboard: React.FC = () => {
         throw new Error('JSON data must be a top-level array of objects.');
       }
 
-      const res = await fetch('http://localhost:5000/api/admin/students/import', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/students/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ students: parsed })
